@@ -1,0 +1,12 @@
+<launch>
+    <!--node name="hokuyo0" pkg="hokuyo_node" type="hokuyo_node">
+        <param name="port" type="string" value="/dev/ttyACM1" />
+        <remap from="scan" to="scan0" />
+    </node-->
+    <node name="hokuyo1" pkg="hokuyo_node" type="hokuyo_node">
+        <param name="port" type="string" value="/dev/ttyACM2" />
+	<param name="min_ang" type="double" value="-0.110436619"/>
+	<param name="max_ang" type="double" value="0.110446619"/>
+        <remap from="scan" to="scan1" />
+    </node>
+</launch>
