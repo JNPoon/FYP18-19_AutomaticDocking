@@ -1,15 +1,20 @@
 <launch>
+  <include file="$(find ar_track_alvar)/launch/pr2_indiv_no_kinect.launch"/>
+
+  <!--node name="docking_algorithm_revised_alvar" pkg="docking" type="docking_algorithm_revised_alvar" output="screen"/-->
+  <node name="final_docking_algorithm" pkg="docking" type="final_docking_algorithm" output="screen"/>
+
   <node name="usb_cam" pkg="usb_cam" type="usb_cam_node"/>
 
-  <include file="$(find ar_track_alvar)/launch/pr2_indiv_no_kinect.launch"/>
-  <!--include file="$(find ar_track_alvar)/launch/pr2_indiv_no_kinect_Big.launch"/-->
-
-  <!--node name="docking_test_alvar" pkg="docking" type="docking_test_alvar" output="screen"/-->
-  <node name="docking_algorithm_revised_alvar" pkg="docking" type="docking_algorithm_revised_alvar" output="screen"/>
+  <node name="hokuyo1" pkg="hokuyo_node" type="hokuyo_node">
+      <param name="port" type="string" value="/dev/ttyACM2" />
+      <param name="min_ang" type="double" value="-0.110436619"/>
+      <param name="max_ang" type="double" value="0.110446619"/>
+      <remap from="scan" to="scan1" />
+  </node>
 
   <node name="image_view" pkg="image_view" type="image_view" args="image:=usb_cam/image_raw">
-    <param name="/usb_cam/pixel_format" value="yuyv"/>
+      <param name="/usb_cam/pixel_format" value="yuyv"/>
   </node>
 
 </launch>
-

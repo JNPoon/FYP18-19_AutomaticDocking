@@ -1,30 +1,18 @@
-#include "ar_single.h"
 #include "ros/ros.h"
-#include "std_msgs/String.h"
 #include "std_msgs/Float32.h"
-#include "std_msgs/Bool.h"
-#include <sstream>
-#include "ARMarker.h"
 #include "geometry_msgs/Twist.h"
-#include "tf/tfMessage.h"
-#include "tf/transform_listener.h"
-#include <m4api_battery/PowerReading.h>
-#include <stdlib.h>
-#include "geometry_msgs/PoseWithCovarianceStamped.h"
-#include <ros/xmlrpc_manager.h>
 #include <math.h>
-#include <tf/transform_datatypes.h>
 #include <ar_track_alvar_msgs/AlvarMarker.h>
 #include <ar_track_alvar_msgs/AlvarMarkers.h>
 #include "ros/time.h"
 
 bool g_Docked = 0;
-bool g_CheckPoint = 0;
+int g_CheckPoint = 0;
 bool g_GetNear = 1; //concept for getting near using larger marker with 10cm
 
 ros::Publisher pub_vel;
 
-void DataChecking(double &transx[], double &transz[], const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingpose)
+void DataChecking(double transx[], double transz[], const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingpose)
 {
   if (dockingpose->markers.size()==0)
   	g_GetNear = 0;
@@ -68,7 +56,7 @@ void SearchSecondMarker(double &sv, double &rv, const ar_track_alvar_msgs::Alvar
   }
 }
 
-void AdjustOrientation(double &transz[], double &sv, double &rv, bool &heading)
+void AdjustOrientation(double transz[], double &sv, double &rv, bool &heading)
 {
   if (transz[0]>transz[1] && fabs(transz[0]-transz[1])>0.03)
   {
@@ -103,7 +91,7 @@ void ChargingVoltageCallBack(const std_msgs::Float32::ConstPtr& chargingvoltage)
   if(chargingvoltage->data>2.6)
   {
     g_Docked = 1;
-    //ROS_WARN("Charging...");
+    ROS_WARN("Docking DONE! Start Charging...");
   }
   else if(chargingvoltage->data<2.5)
   {
@@ -128,8 +116,8 @@ void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingp
   //Printing Info
   if (g_Docked == 0 && g_CheckPoint < 50)
   {
-    ROS_WARN("x0:%f, y0:%f, z0:%f", transx[0], transy[0], transz[0]);
-    ROS_WARN("x1:%f, y1:%f, z1:%f\n\n", transx[1], transy[1], transz[1]);
+    ROS_WARN("x0:%f, z0:%f", transx[0], transz[0]);
+    ROS_WARN("x1:%f, z1:%f\n\n", transx[1], transz[1]);
     // ROS_INFO("item in array:%d",dockingpose->markers.size());
   }
 
@@ -138,7 +126,7 @@ void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingp
   //   rv = 0.2;
 
   if (dockingpose->markers.size()==1 && g_CheckPoint<50)
-    SearchSecondMarker(rv, sv, dockingpose);
+    SearchSecondMarker(sv, rv, dockingpose);
 
   //use different in z value from 2 markers to detect orientation of robot and turn accordingly
   if (dockingpose->markers.size()==2 && g_CheckPoint<50)
@@ -185,7 +173,7 @@ void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingp
     sv = 0.0;
     rv = 0.0;
     g_CheckPoint = 0;
-    ROS_INFO("Docking DONE! Start Charging");
+    ROS_WARN("Docking DONE! Start Charging...");
   }
 
   vel.angular.z = rv;
@@ -199,6 +187,7 @@ void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingp
     ROS_INFO("tv:%f, sv:%f, rv:%f\n\n", tv, sv, rv);
     ROS_INFO("dock done: %d", g_CheckPoint);
     ROS_INFO("Heading: %d", heading);
+    ROS_INFO("Docked: %d", g_Docked);
   }
 }
 
@@ -207,7 +196,8 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "Docking");
   ros::NodeHandle nh;
   pub_vel=nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
-  ros::Subscriber pose = nh.subscribe("ar_pose_marker",50,&DockingCallBack);
-  ros::Subscriber sub_battery_status_m4atx = n.subscribe("sub_battery_status_m4atx",10,&ChargingVoltageCallBack);
+  ros::Subscriber pose = nh.subscribe("ar_pose_marker_Small",50,&DockingCallBack);
+  // ros::Subscriber sub_battery_status_m4atx = nh.subscribe("sub_battery_status_m4atx",10,&ChargingVoltageCallBack);
+  ros::Subscriber sub_chargingvoltage = nh.subscribe("chargingvoltage",1000,&ChargingVoltageCallBack);
   ros::spin();
 }
