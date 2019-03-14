@@ -37,29 +37,28 @@ void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& msg)
   docking::FinalCheck reverse;
   double mid_pt_dist = msg->ranges[msg->ranges.size()/2 - 0.5];
   double single_error = sqrt( pow(msg->ranges[0],2) + pow(msg->ranges[1],2) -
-    2*msg->ranges[0]*msg->ranges[1]*cos(msg->angle_increment));
+    2*msg->ranges[0]*msg->ranges[1]*cos(msg->angle_increment)); //cosine rule
 
   if (g_CheckPointReached == 1)
   {
     int orient = 0; //when compare mid_pt_dist with cos(other scan dist), ++ when within tolerance
-    int orient_value = 16; //a value set to compare with orient
+    int orient_value = 17; //a reference to compare with orient (set by user)
 
     for (int i=0, n=(msg->ranges.size()/2-0.5); i < (msg->ranges.size()/2-0.5); i++, n--)
     {
       double lower_half = msg->ranges[i]*cos(n*msg->angle_increment);
       double upper_half = msg->ranges[msg->ranges.size()-i-1]*cos(n*msg->angle_increment);
-      double tolerance = 0.015; //the tolerance of cos(other scan dist) with respect to mid_pt_dist
+      double tolerance = 0.015; //the tolerance of cos(other scan dist) with respect to mid_pt_dist (set by user)
 
       if ( (upper_half <= (mid_pt_dist + tolerance) && upper_half >= (mid_pt_dist - tolerance) ) &&
         (lower_half <= (mid_pt_dist + tolerance) && lower_half >= (mid_pt_dist - tolerance) ) )
       {
-        orient += 1; //if check equal 16 mean it's perfectly docked, if check > 9 then the orientation is ok!
+        orient += 1;
       }
 
       // ROS_INFO("%d element after cos: %lf", i, msg->ranges[i]*cos(n*msg->angle_increment));
-      // ROS_INFO("first element: %lf", msg->ranges[0]);
-      // ROS_INFO("second element: %lf", msg->ranges[1]);
       // ROS_INFO("mid point distance: %lf", mid_pt_dist);
+      // ROS_INFO("array size: %d", msg->ranges.size());
       // ROS_INFO("%d element after cos: %lf", msg->ranges.size()-i-1, msg->ranges[msg->ranges.size()-i-1]*cos(n*msg->angle_increment));
     }
 
@@ -72,19 +71,20 @@ void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& msg)
       ROS_WARN("Orientation not correct at CheckPoint!! Reversing....");
     }
 
-    // ROS_INFO("check: %d", check);
+    // ROS_INFO("check: %d", orient);
     // ROS_INFO("error: %lf", error);
   }
 
   if (g_MovingBack == 1)
   {
-    double range = 0.15;
+    double docked_distance = 0.178; //the distance from laser to arcylic board when docked (set by user)
 
-    if (mid_pt_dist < 0.15 && g_Docked == 0)
+   	if (mid_pt_dist < docked_distance && g_Docked==0)
     {
       reverse.ReverseCheck = 1;
       pub_reverse.publish(reverse);
-    }
+      ROS_WARN("Cannot Docked!! Reversing....");
+  	}
   }
 }
 

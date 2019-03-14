@@ -9,7 +9,8 @@
 
 bool g_Docked = 0;
 int g_CheckPoint = 0;
-bool g_GetNear = 1; //concept for getting near using larger marker with 10cm
+bool g_Reverse = 0;
+bool g_GetNear = 1; //concept for getting near using larger marker with 10cm (Haven't Implement)
 
 ros::Publisher pub_vel;
 ros::Publisher pub_FinalCheck;
@@ -17,7 +18,7 @@ ros::Publisher pub_FinalCheck;
 void DataChecking(double transx[], double transz[], const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingpose)
 {
   if (dockingpose->markers.size()==0)
-  	g_GetNear = 0;
+    g_GetNear = 0;
 
   //if only 1 marker is detected, check for which marker using marker id
   if (dockingpose->markers.size()==1)
@@ -79,13 +80,19 @@ void AdjustOrientation(double transz[], double &sv, double &rv, bool &heading)
   }
 }
 
-void Reverse(double &tv, geometry_msgs::Twist &vel)
+void Reverse(double &tv, double &rv, double &sv, geometry_msgs::Twist &vel, docking::FinalCheck &check)
 {
   tv = -0.1;
+  rv = 0.03;
+  sv = -0.0;
   vel.linear.x = -tv;
+  vel.linear.y = -sv;
+  vel.angular.z = rv;
   pub_vel.publish(vel);
-  ros::Duration(1).sleep();
-  tv = 0.0;
+  check.CheckPointReached = 0;
+  check.MovingBack = 0;
+  check.ReverseCheck = 0;
+  pub_FinalCheck.publish(check);
 }
 
 void ChargingVoltageCallBack(const std_msgs::Float32::ConstPtr& chargingvoltage)
@@ -101,70 +108,78 @@ void ChargingVoltageCallBack(const std_msgs::Float32::ConstPtr& chargingvoltage)
   }
 }
 
-void ReverseCallBack(const docking::FinalCheck msg)
+void ReverseCallBack(const docking::FinalCheck::ConstPtr& msg)
 {
-  geometry_msgs::Twist vel;
-  docking::FinalCheck check;
-  double tv=0.0;
-
   if (msg->ReverseCheck == 1)
-  {
-    Reverse(tv, vel);
-    check.CheckPointReached = 0;
-    check.MovingBack = 0;
-    check.ReverseCheck = 0;
-    pub_FinalCheck.publish(check);
-  }
+    g_Reverse = 1;
 }
 
 void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingpose)
 {
   geometry_msgs::Twist vel;
-  docking::FinalCheck check;
+  docking::FinalCheck check; //to communicate with laser_docked_check.cpp
   double transx[2], transz[2];
   double x, z;
   double tv=0.0, sv=0.0, rv=0.0;
+  double ReverseDistance = 0.65; //how far to go when reverse is called (set by user)
+  int CheckPointCount = 50; //counter limit for g_CheckPoint to count until at check point (set by user)
   bool heading;
-
-  x = transx[0] + transx[1];
-  z = (transz[0] + transz[1]) / 2;
 
   //to check for number of markers detected (to avoid segfault)
   DataChecking(transx, transz, dockingpose);
 
+  x = transx[0] + transx[1]; //both value will be in different sign, +ve and -ve
+  z = (transz[0] + transz[1]) / 2;
+
   //Printing Info
-  if (g_Docked == 0 && g_CheckPoint < 50)
+  if (g_Docked == 0 && g_CheckPoint<CheckPointCount)
   {
     ROS_WARN("x0:%f, z0:%f", transx[0], transz[0]);
     ROS_WARN("x1:%f, z1:%f\n\n", transx[1], transz[1]);
   }
 
-  if (dockingpose->markers.size()==1 && g_CheckPoint<50)
+  if (dockingpose->markers.size()==1 && g_CheckPoint<CheckPointCount)
     SearchSecondMarker(sv, rv, dockingpose);
 
   //use different in z value from 2 markers to detect orientation of robot and turn accordingly
-  if (dockingpose->markers.size()==2 && g_CheckPoint<50)
+  if (dockingpose->markers.size()==2 && g_CheckPoint<CheckPointCount)
     AdjustOrientation(transz, sv, rv, heading);
 
-  //Mobe Backward to CheckPoint if heading is correct
-  if ( (x<0.05 || x>-0.05) && heading==1 && g_CheckPoint<50)
+  //Move to CheckPoint if heading is correct
+  if ( (x<0.05 || x>-0.05) && heading==1 && g_CheckPoint<CheckPointCount)
   {
-    if (z>0.3)
+    if (z>0.3 && g_Reverse ==0)
       tv = 0.1;
     else
     {
       tv = 0.0;
-      check.CheckPointReached = 1;
-      check.MovingBack = 0;
-      pub_FinalCheck.publish(check);
 
       //To Start the CheckPoint count
-      if (dockingpose->markers.size()==2) g_CheckPoint += 1;
+      if (dockingpose->markers.size()==2 && g_Reverse==0)
+      {
+        g_CheckPoint += 1;
+        check.CheckPointReached = 1;
+        check.MovingBack = 0;
+        pub_FinalCheck.publish(check);
+        ROS_INFO("Check Point");
+      }
+      if (g_Reverse == 1)
+      {
+        //keep reversing until the preset distance set by ReverseDistance
+        if (z>ReverseDistance)
+        {
+          g_Reverse = 0;
+          g_CheckPoint = 0;
+        }
+        Reverse(tv, rv, sv, vel, check);
+        ROS_WARN("Orientation not correct at CheckPoint!! Reversing...");
+      }
     }
   }
 
+
   //Final Adjustmnet for Left&Right Position
-  if (heading==1 && g_CheckPoint<50 && dockingpose->markers.size()==2)
+  if (heading==1 && g_CheckPoint<CheckPointCount && dockingpose->markers.size()==2 && g_Reverse==0)
   {
     if (x>0.05) sv = -0.1;
     if (x<-0.05) sv = 0.1;
@@ -172,13 +187,27 @@ void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingp
 
   //Last step to move closer because still too far from station
   //when both marker at edge of camera detection
-  if (g_CheckPoint >= 50 && g_Docked == 0)
+  if (g_CheckPoint >= CheckPointCount && g_Docked == 0)
   {
-    tv = 0.05;
-    check.CheckPointReached = 0;
-    check.MovingBack = 1;
-    pub_FinalCheck.publish(check);
-    ROS_INFO("Final Step: Moving %.2f backward to charge", tv);
+    if (g_Reverse == 0)
+    {
+      tv = 0.05;
+      check.CheckPointReached = 0;
+      check.MovingBack = 1;
+      pub_FinalCheck.publish(check);
+      ROS_INFO("Final Step: Moving %.2f backward to charge", tv);
+    }
+    if (g_Reverse == 1)
+    {
+      //keep reversing until the preset distance set by ReverseDistance
+      if (z>ReverseDistance)
+      {
+        g_Reverse = 0;
+        g_CheckPoint = 0;
+      }
+      Reverse(tv, rv, sv, vel, check);
+      ROS_WARN("Cannot Docked!!! Reversing...");
+    }
   }
 
   //Robot Charging, Stop Moving and Reset CheckPoint Count
@@ -192,9 +221,9 @@ void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingp
   }
 
   //Reverse the robot for recalibrate if it get too close and pose is wrong
-  if (dockingpose->markers.size()==1 && g_CheckPoint<50)
+  if (dockingpose->markers.size()==1 && g_CheckPoint<CheckPointCount)
     if ( (dockingpose->markers[0].id==0 && transz[0]<0.27) || (dockingpose->markers[0].id==1 && transz[1]<0.27) )
-      Reverse(tv, vel);
+      Reverse(tv, rv, sv, vel, check);
 
   vel.angular.z = rv;
   vel.linear.x = -tv;
@@ -202,7 +231,7 @@ void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingp
   pub_vel.publish(vel);
 
   //Printing Info
-  if (g_Docked == 0 && g_CheckPoint < 50)
+  if (g_Docked==0 && g_CheckPoint<CheckPointCount)
   {
     ROS_INFO("tv:%f, sv:%f, rv:%f\n\n", tv, sv, rv);
     ROS_INFO("dock done: %d", g_CheckPoint);
