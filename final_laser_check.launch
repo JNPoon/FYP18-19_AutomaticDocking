@@ -1,0 +1,7 @@
+<launch>
+  <node name="laser_docked_check" pkg="docking" type="laser_docked_check" output="screen">
+    <param name="OrientValue" type="int" value="17"/>
+    <param name="Tolerance" type="double" value="0.015"/>
+    <param name="DockedDistance" type="double" value="0.178"/>
+  </node>
+</launch>

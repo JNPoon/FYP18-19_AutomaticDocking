@@ -5,12 +5,28 @@
 #include <math.h>
 #include <sensor_msgs/LaserScan.h>
 
+//-------------------------------------------------------
+//GLOBAL VARIABLE
+//-------------------------------------------------------
 bool g_CheckPointReached = 0;
 bool g_MovingBack = 0;
 bool g_Docked = 0;
 
+//-------------------------------------------------------
+//PARAM VARIABLE
+//-------------------------------------------------------
+int p_OrientValue = 17; //a reference to compare with orient (set by user)
+double p_Tolerance = 0.015; //the tolerance of cos(other scan dist) with respect to mid_pt_dist (set by user)
+double p_DockedDistance = 0.178; //the distance from laser to arcylic board when docked (set by user)
+
+//-------------------------------------------------------
+//PUBLISHER VARIABLE
+//-------------------------------------------------------
 ros::Publisher pub_reverse;
 
+//-------------------------------------------------------
+//CALLBACK FUNCTION
+//-------------------------------------------------------
 void FinalCheckCallBack(const docking::FinalCheck::ConstPtr& check)
 {
   g_CheckPointReached = 0; //Reset to 0
@@ -24,7 +40,7 @@ void ChargingVoltageCallBack(const std_msgs::Float32::ConstPtr& chargingvoltage)
   if(chargingvoltage->data>2.6)
   {
     g_Docked = 1;
-    // ROS_WARN("Docking DONE! Start Charging...");
+    ROS_WARN("Docking DONE! Start Charging...");
   }
   else if(chargingvoltage->data<2.5)
   {
@@ -41,17 +57,15 @@ void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& msg)
 
   if (g_CheckPointReached == 1)
   {
-    int orient = 0; //when compare mid_pt_dist with cos(other scan dist), ++ when within tolerance
-    int orient_value = 17; //a reference to compare with orient (set by user)
+    int orient = 0; //when compare mid_pt_dist with cos(other scan dist), ++ when within p_Tolerance
 
     for (int i=0, n=(msg->ranges.size()/2-0.5); i < (msg->ranges.size()/2-0.5); i++, n--)
     {
       double lower_half = msg->ranges[i]*cos(n*msg->angle_increment);
       double upper_half = msg->ranges[msg->ranges.size()-i-1]*cos(n*msg->angle_increment);
-      double tolerance = 0.015; //the tolerance of cos(other scan dist) with respect to mid_pt_dist (set by user)
 
-      if ( (upper_half <= (mid_pt_dist + tolerance) && upper_half >= (mid_pt_dist - tolerance) ) &&
-        (lower_half <= (mid_pt_dist + tolerance) && lower_half >= (mid_pt_dist - tolerance) ) )
+      if ( (upper_half <= (mid_pt_dist + p_Tolerance) && upper_half >= (mid_pt_dist - p_Tolerance) ) &&
+        (lower_half <= (mid_pt_dist + p_Tolerance) && lower_half >= (mid_pt_dist - p_Tolerance) ) )
       {
         orient += 1;
       }
@@ -64,7 +78,7 @@ void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& msg)
 
     // double error = (check - 16) * single_error * 100; //calculate shift in x direction and convert into cm
 
-    if (orient < orient_value)
+    if (orient < p_OrientValue)
     {
       reverse.ReverseCheck = 1;
       pub_reverse.publish(reverse);
@@ -77,9 +91,7 @@ void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& msg)
 
   if (g_MovingBack == 1)
   {
-    double docked_distance = 0.178; //the distance from laser to arcylic board when docked (set by user)
-
-   	if (mid_pt_dist < docked_distance && g_Docked==0)
+   	if (mid_pt_dist < p_DockedDistance && g_Docked==0)
     {
       reverse.ReverseCheck = 1;
       pub_reverse.publish(reverse);
@@ -92,9 +104,17 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "Laser_Data");
   ros::NodeHandle nh;
+  ros::NodeHandle pnh;
+
+  pnh.param<int>("OrientValue", p_OrientValue, 17);
+  pnh.param<double>("Tolerance", p_Tolerance, 0.015);
+  pnh.param<double>("DockedDistance", p_DockedDistance, 0.178);
+
   pub_reverse = nh.advertise<docking::FinalCheck>("FinalCheck",1);
+
   ros::Subscriber sub_Laser = nh.subscribe("scan1",50,&LaserCallBack);
   ros::Subscriber sub_FinalCheck = nh.subscribe("FinalCheck",10,&FinalCheckCallBack);
   ros::Subscriber sub_ChargingVoltage = nh.subscribe("chargingvoltage",1000,&ChargingVoltageCallBack);
+
   ros::spin();
 }
