@@ -61,16 +61,11 @@ when doing the second check, in meter.
 ### 1. final_docking_algorithm node
 Get distance value from ar_track_alvar and perform motion planning
 #### Subscribed Topics
-- `/ar_pose_marker_Small` (ar_track_alvar_msgs/AlvarMarkers)
-
+- `/ar_pose_marker_Small` (ar_track_alvar_msgs/AlvarMarkers)  
   The distance value of the marker from the camera
-  
-- `/chargingvoltage` (std_msgs/Float32)
-
+- `/chargingvoltage` (std_msgs/Float32)  
   The voltage of the battery during charging state and non-charging state
-  
-- `/FinalCheck` (docking/FinalCheck)
-
+- `/FinalCheck` (docking/FinalCheck)  
   The messages to communicate with laser_docked_check node
   
 #### Published Topics
