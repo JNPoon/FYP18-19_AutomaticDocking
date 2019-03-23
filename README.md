@@ -55,7 +55,7 @@ when checking orientation using the laser, in meter.
 when doing the second check, in meter.
   - Default: `0.178`
 > For other parameters in other nodes from other packages, please refer to their documentation 
-[here](https://github.com/JNPoon/FYP18-19_AutomaticDocking/new/master?readme=1#packages)
+[here](https://github.com/JNPoon/FYP18-19_AutomaticDocking#packages)
 
 ## Nodes
 ### 1. final_docking_algorithm node
