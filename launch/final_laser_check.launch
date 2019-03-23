@@ -4,4 +4,11 @@
     <param name="Tolerance" type="double" value="0.015"/>
     <param name="DockedDistance" type="double" value="0.178"/>
   </node>
+
+  <node name="hokuyo1" pkg="hokuyo_node" type="hokuyo_node">
+    <param name="port" type="string" value="/dev/ttyACM2" />
+    <param name="min_ang" type="double" value="-0.110436619"/>
+    <param name="max_ang" type="double" value="0.110446619"/>
+    <remap from="scan" to="scan1" />
+  </node>
 </launch>
