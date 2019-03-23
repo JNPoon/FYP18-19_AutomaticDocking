@@ -67,38 +67,27 @@ Get distance value from ar_track_alvar and perform motion planning
   The voltage of the battery during charging state and non-charging state
 - `/FinalCheck` (docking/FinalCheck)  
   The messages to communicate with laser_docked_check node
-  
 #### Published Topics
-- `/cmd_vel` (geometry_msgs/Twist)
-
-  The velocity to be sent to motion controller by odom node
-  
-- `/FinalCheck` (docking/FinalCheck)
-
+- `/cmd_vel` (geometry_msgs/Twist)  
+  The velocity to be sent to motion controller by odom node  
+- `/FinalCheck` (docking/FinalCheck)  
   The messages to communicate with laser_docked_check node
   
 ### 2. laser_docked_check node
 Check the orientation at check point and whether docked successfully
 #### Subscribed Topics
-- `/scan1` (sensor_msgs/LaserScan)
-
-  The distance value from the Hokuyo Laser Range Finder
-  
-- `/chargingvoltage` (std_msgs/Float32)
-
+- `/scan1` (sensor_msgs/LaserScan)  
+  The distance value from the Hokuyo Laser Range Finder  
+- `/chargingvoltage` (std_msgs/Float32)  
   The voltage of the battery during charging state and non-charging state
-  
-- `/FinalCheck` (docking/FinalCheck)
-
+- `/FinalCheck` (docking/FinalCheck)  
   The messages to communicate with final_docking_algorithm node
-  
 #### Published Topics
-- `/FinalCheck` (docking/FinalCheck)
-
+- `/FinalCheck` (docking/FinalCheck)  
   The messages to communicate with final_docking_algorithm node
   
 ## Details Description
-For more detail documentation, please refer to here
+For more detail documentation, please refer to [here](msg/FinalCheck.msg)
   
   
   
