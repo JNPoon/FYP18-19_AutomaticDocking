@@ -11,12 +11,16 @@
 bool g_CheckPointReached = 0;
 bool g_MovingBack = 0;
 bool g_Docked = 0;
+// double g_max_upper = 0;
+// double g_min_upper = 0;
+// double g_max_lower = 0;
+// double g_min_lower = 0;
 
 //-------------------------------------------------------
 //PARAM VARIABLE
 //-------------------------------------------------------
-int p_OrientValue = 17; //a reference to compare with orient (set by user)
-double p_Tolerance = 0.015; //the tolerance of cos(other scan dist) with respect to mid_pt_dist (set by user)
+int p_OrientValue = 16; //a reference to compare with orient (set by user)
+double p_Tolerance = 0.016; //the tolerance of cos(other scan dist) with respect to mid_pt_dist (set by user)
 double p_DockedDistance = 0.178; //the distance from laser to arcylic board when docked (set by user)
 
 //-------------------------------------------------------
@@ -64,6 +68,19 @@ void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& msg)
       double lower_half = msg->ranges[i]*cos(n*msg->angle_increment);
       double upper_half = msg->ranges[msg->ranges.size()-i-1]*cos(n*msg->angle_increment);
 
+      // if (i==0)
+      // {
+      // 	g_max_lower = lower_half;
+      // 	g_min_lower = lower_half;
+      // 	g_max_upper = upper_half;
+      // 	g_min_upper = upper_half;
+      // }
+
+      // if (lower_half>g_max_lower) g_max_lower = lower_half;
+      // if (lower_half<g_min_lower) g_min_lower = lower_half;
+      // if (upper_half>g_max_upper) g_max_upper = upper_half;
+      // if (upper_half<g_min_upper) g_min_upper = upper_half;
+
       if ( (upper_half <= (mid_pt_dist + p_Tolerance) && upper_half >= (mid_pt_dist - p_Tolerance) ) &&
         (lower_half <= (mid_pt_dist + p_Tolerance) && lower_half >= (mid_pt_dist - p_Tolerance) ) )
       {
@@ -85,6 +102,8 @@ void LaserCallBack(const sensor_msgs::LaserScan::ConstPtr& msg)
       ROS_WARN("Orientation not correct at CheckPoint!! Reversing....");
     }
 
+    // ROS_WARN("lower error: %lf", g_max_lower - g_min_lower);
+    // ROS_WARN("upper error: %lf", g_max_upper - g_min_upper);
     // ROS_INFO("check: %d", orient);
     // ROS_INFO("error: %lf", error);
   }
@@ -106,8 +125,8 @@ int main(int argc, char **argv)
   ros::NodeHandle nh;
   ros::NodeHandle pnh;
 
-  pnh.param<int>("OrientValue", p_OrientValue, 17);
-  pnh.param<double>("Tolerance", p_Tolerance, 0.015);
+  pnh.param<int>("OrientValue", p_OrientValue, 16);
+  pnh.param<double>("Tolerance", p_Tolerance, 0.016);
   pnh.param<double>("DockedDistance", p_DockedDistance, 0.178);
 
   pub_reverse = nh.advertise<docking::FinalCheck>("FinalCheck",1);
