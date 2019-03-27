@@ -20,7 +20,7 @@ bool g_GetNear = 1; //concept for getting near using larger marker with 10cm (Ha
 //-------------------------------------------------------
 double p_zError = 0.03; //the different in z value of marker 0 and marker 1 when robot is in correct orientation (set by user)
 double p_ReverseDistance = 0.65; //how far to go when reverse is called (set by user)
-int p_CheckPointCount = 50; //counter limit for g_CheckPoint to count until at check point (set by user)
+int p_CheckPointCount = 30; //counter limit for g_CheckPoint to count until at check point (set by user)
 
 //-------------------------------------------------------
 //PUBLISHER VARIABLE
@@ -145,9 +145,6 @@ void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingp
   //to check for number of markers detected (to avoid segfault)
   DataChecking(transx, transz, dockingpose);
 
-  x = transx[0] + transx[1]; //both value will be in different sign, +ve and -ve
-  z = (transz[0] + transz[1]) / 2;
-
   //Printing Info
   if (g_Docked == 0 && g_CheckPoint<p_CheckPointCount)
   {
@@ -157,6 +154,9 @@ void DockingCallBack(const ar_track_alvar_msgs::AlvarMarkers::ConstPtr& dockingp
 
   if (dockingpose->markers.size()==1 && g_CheckPoint<p_CheckPointCount)
     SearchSecondMarker(sv, rv, dockingpose);
+
+  x = transx[0] + transx[1]; //both value will be in different sign, +ve and -ve
+  z = (transz[0] + transz[1]) / 2;
 
   //use different in z value from 2 markers to detect orientation of robot and turn accordingly
   if (dockingpose->markers.size()==2 && g_CheckPoint<p_CheckPointCount)
@@ -270,7 +270,7 @@ int main(int argc, char **argv)
 
   pnh.param<double>("zError", p_zError, 0.03);
   pnh.param<double>("ReverseDistance", p_ReverseDistance, 0.65);
-  pnh.param<int>("CheckPointCount", p_CheckPointCount, 50);
+  pnh.param<int>("CheckPointCount", p_CheckPointCount, 30);
 
   pub_vel = nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
   pub_FinalCheck = nh.advertise<docking::FinalCheck>("FinalCheck",1);

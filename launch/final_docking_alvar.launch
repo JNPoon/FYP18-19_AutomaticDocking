@@ -5,6 +5,7 @@
     <param name="zError" type="double" value="0.03"/>
     <param name="ReverseDistance" type="double" value="0.65"/>
     <param name="CheckPointCount" type="int" value="30"/>
+    <remap from="ar_pose_marker" to="ar_pose_marker_Small"/>
   </node>
 
   <node name="usb_cam" pkg="usb_cam" type="usb_cam_node"/>

@@ -87,7 +87,7 @@ Check the orientation at check point and whether docked successfully
   The messages to communicate with final_docking_algorithm node
   
 ## Details Description
-For more detail documentation, please refer to [here](msg/FinalCheck.msg)
+For more detail documentation, please refer to [here](documentation/Draft_FinalReport_Heading.docx)
   
   
   
